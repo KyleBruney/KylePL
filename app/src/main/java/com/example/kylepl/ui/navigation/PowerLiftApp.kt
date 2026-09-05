@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -106,6 +107,15 @@ private val rehabDestinations = listOf(
 )
 private val trailingDestinations = listOf(PowerLiftDestination.WeighIn)
 
+private const val PlyometricsGroupLabel = "Plyometrics"
+private const val WarmupsGroupLabel = "Warmups"
+private const val RehabGroupLabel = "Rehab"
+private val drawerGroupDestinations = mapOf(
+    PlyometricsGroupLabel to plyoDestinations,
+    WarmupsGroupLabel to warmupDestinations,
+    RehabGroupLabel to rehabDestinations,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KylePlApp() {
@@ -117,6 +127,13 @@ fun KylePlApp() {
     val currentRoute = backStackEntry?.destination?.route
     val currentDestination = PowerLiftDestination.entries.find { it.route == currentRoute }
     val title = currentDestination?.label ?: "KylePL"
+
+    var expandedGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentRoute) {
+        expandedGroup = drawerGroupDestinations.entries
+            .firstOrNull { (_, destinations) -> destinations.any { it.route == currentRoute } }
+            ?.key
+    }
 
     fun navigateTo(destination: PowerLiftDestination) {
         scope.launch { drawerState.close() }
@@ -145,18 +162,26 @@ fun KylePlApp() {
                 }
 
                 ExpandableDrawerGroup(
-                    label = "Plyometrics",
+                    label = PlyometricsGroupLabel,
                     icon = Icons.Filled.Bolt,
                     children = plyoDestinations,
                     currentRoute = currentRoute,
+                    expanded = expandedGroup == PlyometricsGroupLabel,
+                    onToggleExpanded = {
+                        expandedGroup = if (expandedGroup == PlyometricsGroupLabel) null else PlyometricsGroupLabel
+                    },
                     onNavigate = { navigateTo(it) },
                 )
 
                 ExpandableDrawerGroup(
-                    label = "Warmups",
+                    label = WarmupsGroupLabel,
                     icon = Icons.Filled.LocalFireDepartment,
                     children = warmupDestinations,
                     currentRoute = currentRoute,
+                    expanded = expandedGroup == WarmupsGroupLabel,
+                    onToggleExpanded = {
+                        expandedGroup = if (expandedGroup == WarmupsGroupLabel) null else WarmupsGroupLabel
+                    },
                     onNavigate = { navigateTo(it) },
                 )
 
@@ -169,10 +194,14 @@ fun KylePlApp() {
                 }
 
                 ExpandableDrawerGroup(
-                    label = "Rehab",
+                    label = RehabGroupLabel,
                     icon = Icons.Filled.HealthAndSafety,
                     children = rehabDestinations,
                     currentRoute = currentRoute,
+                    expanded = expandedGroup == RehabGroupLabel,
+                    onToggleExpanded = {
+                        expandedGroup = if (expandedGroup == RehabGroupLabel) null else RehabGroupLabel
+                    },
                     onNavigate = { navigateTo(it) },
                 )
 
@@ -240,16 +269,17 @@ private fun ExpandableDrawerGroup(
     icon: ImageVector,
     children: List<PowerLiftDestination>,
     currentRoute: String?,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
     onNavigate: (PowerLiftDestination) -> Unit,
 ) {
-    var expanded by rememberSaveable(label) { mutableStateOf(children.any { it.route == currentRoute }) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "${label}ChevronRotation")
 
     NavigationDrawerItem(
         label = { Text(label) },
         icon = { Icon(icon, contentDescription = null) },
         selected = children.any { it.route == currentRoute },
-        onClick = { expanded = !expanded },
+        onClick = onToggleExpanded,
         badge = {
             Icon(
                 Icons.Filled.ExpandMore,
