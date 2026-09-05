@@ -1,0 +1,6 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.KylePL" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@color/charcoal</item>
+        <item name="android:windowBackground">@color/charcoal</item>
+    </style>
+</resources>
