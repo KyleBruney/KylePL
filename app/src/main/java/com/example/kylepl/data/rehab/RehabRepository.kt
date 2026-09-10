@@ -33,6 +33,15 @@ object RehabRepository {
         }
     }
 
+    suspend fun updateExercise(context: Context, group: RehabGroup, id: String, name: String, repRange: String, description: String) {
+        context.rehabDataStore.edit { prefs ->
+            val updated = decode(prefs[keyFor(group)].orEmpty()).map { exercise ->
+                if (exercise.id == id) exercise.copy(name = name, repRange = repRange, description = description) else exercise
+            }
+            prefs[keyFor(group)] = encode(updated)
+        }
+    }
+
     suspend fun deleteExercise(context: Context, group: RehabGroup, id: String) {
         context.rehabDataStore.edit { prefs ->
             val updated = decode(prefs[keyFor(group)].orEmpty()).filterNot { it.id == id }

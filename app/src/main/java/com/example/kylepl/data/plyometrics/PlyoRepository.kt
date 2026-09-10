@@ -33,6 +33,15 @@ object PlyoRepository {
         }
     }
 
+    suspend fun updateExercise(context: Context, level: PlyoLevel, id: String, name: String, repRange: String, description: String) {
+        context.plyoDataStore.edit { prefs ->
+            val updated = decode(prefs[keyFor(level)].orEmpty()).map { exercise ->
+                if (exercise.id == id) exercise.copy(name = name, repRange = repRange, description = description) else exercise
+            }
+            prefs[keyFor(level)] = encode(updated)
+        }
+    }
+
     suspend fun deleteExercise(context: Context, level: PlyoLevel, id: String) {
         context.plyoDataStore.edit { prefs ->
             val updated = decode(prefs[keyFor(level)].orEmpty()).filterNot { it.id == id }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -86,6 +87,7 @@ private fun PlyoScreen(level: PlyoLevel, title: String, caption: String) {
     val exercises by exercisesFlow.collectAsState(initial = emptyList())
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -130,6 +132,7 @@ private fun PlyoScreen(level: PlyoLevel, title: String, caption: String) {
                 onClick = { selectedId = if (selectedId == exercise.id) null else exercise.id },
                 onMoveUp = { scope.launch { PlyoRepository.moveExercise(context, level, exercise.id, -1) } },
                 onMoveDown = { scope.launch { PlyoRepository.moveExercise(context, level, exercise.id, 1) } },
+                onEdit = { editingId = exercise.id },
                 onDelete = {
                     scope.launch { PlyoRepository.deleteExercise(context, level, exercise.id) }
                     selectedId = null
@@ -139,11 +142,27 @@ private fun PlyoScreen(level: PlyoLevel, title: String, caption: String) {
     }
 
     if (showAddDialog) {
-        AddPlyoDialog(
+        ExerciseFormDialog(
+            title = "Add Plyometric Exercise",
             onDismiss = { showAddDialog = false },
             onSave = { name, repRange, description ->
                 scope.launch { PlyoRepository.addExercise(context, level, name, repRange, description) }
                 showAddDialog = false
+            },
+        )
+    }
+
+    val exerciseBeingEdited = editingId?.let { id -> exercises.find { it.id == id } }
+    if (exerciseBeingEdited != null) {
+        ExerciseFormDialog(
+            title = "Edit Exercise",
+            initialName = exerciseBeingEdited.name,
+            initialRepRange = exerciseBeingEdited.repRange,
+            initialDescription = exerciseBeingEdited.description,
+            onDismiss = { editingId = null },
+            onSave = { name, repRange, description ->
+                scope.launch { PlyoRepository.updateExercise(context, level, exerciseBeingEdited.id, name, repRange, description) }
+                editingId = null
             },
         )
     }
@@ -158,6 +177,7 @@ private fun PlyoExerciseCard(
     onClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(
@@ -204,6 +224,7 @@ private fun PlyoExerciseCard(
                     canMoveDown = canMoveDown,
                     onMoveUp = onMoveUp,
                     onMoveDown = onMoveDown,
+                    onEdit = onEdit,
                     onDelete = onDelete,
                 )
             }
@@ -217,6 +238,7 @@ private fun ExerciseCardActions(
     canMoveDown: Boolean,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
@@ -235,6 +257,9 @@ private fun ExerciseCardActions(
             Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move down")
         }
         Spacer(modifier = Modifier.weight(1f))
+        IconButton(onClick = onEdit) {
+            Icon(Icons.Filled.Edit, contentDescription = "Edit")
+        }
         IconButton(onClick = { showDeleteConfirm = true }) {
             Icon(Icons.Filled.Delete, contentDescription = "Delete")
         }
@@ -259,17 +284,21 @@ private fun ExerciseCardActions(
 }
 
 @Composable
-private fun AddPlyoDialog(
+private fun ExerciseFormDialog(
+    title: String,
+    initialName: String = "",
+    initialRepRange: String = "",
+    initialDescription: String = "",
     onDismiss: () -> Unit,
     onSave: (name: String, repRange: String, description: String) -> Unit,
 ) {
-    var name by rememberSaveable { mutableStateOf("") }
-    var repRange by rememberSaveable { mutableStateOf("") }
-    var description by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var repRange by rememberSaveable { mutableStateOf(initialRepRange) }
+    var description by rememberSaveable { mutableStateOf(initialDescription) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Plyometric Exercise") },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -339,6 +368,7 @@ private fun WarmupScreen(group: WarmupGroup, title: String, caption: String) {
     val exercises by exercisesFlow.collectAsState(initial = emptyList())
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -383,6 +413,7 @@ private fun WarmupScreen(group: WarmupGroup, title: String, caption: String) {
                 onClick = { selectedId = if (selectedId == exercise.id) null else exercise.id },
                 onMoveUp = { scope.launch { WarmupRepository.moveExercise(context, group, exercise.id, -1) } },
                 onMoveDown = { scope.launch { WarmupRepository.moveExercise(context, group, exercise.id, 1) } },
+                onEdit = { editingId = exercise.id },
                 onDelete = {
                     scope.launch { WarmupRepository.deleteExercise(context, group, exercise.id) }
                     selectedId = null
@@ -392,11 +423,27 @@ private fun WarmupScreen(group: WarmupGroup, title: String, caption: String) {
     }
 
     if (showAddDialog) {
-        AddWarmupDialog(
+        ExerciseFormDialog(
+            title = "Add Warmup Exercise",
             onDismiss = { showAddDialog = false },
             onSave = { name, repRange, description ->
                 scope.launch { WarmupRepository.addExercise(context, group, name, repRange, description) }
                 showAddDialog = false
+            },
+        )
+    }
+
+    val exerciseBeingEdited = editingId?.let { id -> exercises.find { it.id == id } }
+    if (exerciseBeingEdited != null) {
+        ExerciseFormDialog(
+            title = "Edit Exercise",
+            initialName = exerciseBeingEdited.name,
+            initialRepRange = exerciseBeingEdited.repRange,
+            initialDescription = exerciseBeingEdited.description,
+            onDismiss = { editingId = null },
+            onSave = { name, repRange, description ->
+                scope.launch { WarmupRepository.updateExercise(context, group, exerciseBeingEdited.id, name, repRange, description) }
+                editingId = null
             },
         )
     }
@@ -411,6 +458,7 @@ private fun WarmupExerciseCard(
     onClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(
@@ -457,63 +505,12 @@ private fun WarmupExerciseCard(
                     canMoveDown = canMoveDown,
                     onMoveUp = onMoveUp,
                     onMoveDown = onMoveDown,
+                    onEdit = onEdit,
                     onDelete = onDelete,
                 )
             }
         }
     }
-}
-
-@Composable
-private fun AddWarmupDialog(
-    onDismiss: () -> Unit,
-    onSave: (name: String, repRange: String, description: String) -> Unit,
-) {
-    var name by rememberSaveable { mutableStateOf("") }
-    var repRange by rememberSaveable { mutableStateOf("") }
-    var description by rememberSaveable { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Warmup Exercise") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = capitalizeWords(it) },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = repRange,
-                    onValueChange = { repRange = it },
-                    label = { Text("Rep Range") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = capitalizeFirst(it) },
-                    label = { Text("Description") },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(name.trim(), repRange.trim(), description.trim()) },
-                enabled = name.isNotBlank(),
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
 }
 
 @Composable
@@ -524,6 +521,7 @@ fun StretchesScreen() {
     val exercises by exercisesFlow.collectAsState(initial = emptyList())
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -568,6 +566,7 @@ fun StretchesScreen() {
                 onClick = { selectedId = if (selectedId == exercise.id) null else exercise.id },
                 onMoveUp = { scope.launch { StretchRepository.moveExercise(context, exercise.id, -1) } },
                 onMoveDown = { scope.launch { StretchRepository.moveExercise(context, exercise.id, 1) } },
+                onEdit = { editingId = exercise.id },
                 onDelete = {
                     scope.launch { StretchRepository.deleteExercise(context, exercise.id) }
                     selectedId = null
@@ -577,11 +576,27 @@ fun StretchesScreen() {
     }
 
     if (showAddDialog) {
-        AddStretchDialog(
+        ExerciseFormDialog(
+            title = "Add Stretch",
             onDismiss = { showAddDialog = false },
             onSave = { name, repRange, description ->
                 scope.launch { StretchRepository.addExercise(context, name, repRange, description) }
                 showAddDialog = false
+            },
+        )
+    }
+
+    val exerciseBeingEdited = editingId?.let { id -> exercises.find { it.id == id } }
+    if (exerciseBeingEdited != null) {
+        ExerciseFormDialog(
+            title = "Edit Stretch",
+            initialName = exerciseBeingEdited.name,
+            initialRepRange = exerciseBeingEdited.repRange,
+            initialDescription = exerciseBeingEdited.description,
+            onDismiss = { editingId = null },
+            onSave = { name, repRange, description ->
+                scope.launch { StretchRepository.updateExercise(context, exerciseBeingEdited.id, name, repRange, description) }
+                editingId = null
             },
         )
     }
@@ -596,6 +611,7 @@ private fun StretchExerciseCard(
     onClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(
@@ -642,63 +658,12 @@ private fun StretchExerciseCard(
                     canMoveDown = canMoveDown,
                     onMoveUp = onMoveUp,
                     onMoveDown = onMoveDown,
+                    onEdit = onEdit,
                     onDelete = onDelete,
                 )
             }
         }
     }
-}
-
-@Composable
-private fun AddStretchDialog(
-    onDismiss: () -> Unit,
-    onSave: (name: String, repRange: String, description: String) -> Unit,
-) {
-    var name by rememberSaveable { mutableStateOf("") }
-    var repRange by rememberSaveable { mutableStateOf("") }
-    var description by rememberSaveable { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Stretch") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = capitalizeWords(it) },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = repRange,
-                    onValueChange = { repRange = it },
-                    label = { Text("Rep Range") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = capitalizeFirst(it) },
-                    label = { Text("Description") },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(name.trim(), repRange.trim(), description.trim()) },
-                enabled = name.isNotBlank(),
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
 }
 
 @Composable
@@ -744,6 +709,7 @@ private fun RehabScreen(group: RehabGroup, title: String, caption: String) {
     val exercises by exercisesFlow.collectAsState(initial = emptyList())
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -788,6 +754,7 @@ private fun RehabScreen(group: RehabGroup, title: String, caption: String) {
                 onClick = { selectedId = if (selectedId == exercise.id) null else exercise.id },
                 onMoveUp = { scope.launch { RehabRepository.moveExercise(context, group, exercise.id, -1) } },
                 onMoveDown = { scope.launch { RehabRepository.moveExercise(context, group, exercise.id, 1) } },
+                onEdit = { editingId = exercise.id },
                 onDelete = {
                     scope.launch { RehabRepository.deleteExercise(context, group, exercise.id) }
                     selectedId = null
@@ -797,11 +764,27 @@ private fun RehabScreen(group: RehabGroup, title: String, caption: String) {
     }
 
     if (showAddDialog) {
-        AddRehabDialog(
+        ExerciseFormDialog(
+            title = "Add Rehab Exercise",
             onDismiss = { showAddDialog = false },
             onSave = { name, repRange, description ->
                 scope.launch { RehabRepository.addExercise(context, group, name, repRange, description) }
                 showAddDialog = false
+            },
+        )
+    }
+
+    val exerciseBeingEdited = editingId?.let { id -> exercises.find { it.id == id } }
+    if (exerciseBeingEdited != null) {
+        ExerciseFormDialog(
+            title = "Edit Exercise",
+            initialName = exerciseBeingEdited.name,
+            initialRepRange = exerciseBeingEdited.repRange,
+            initialDescription = exerciseBeingEdited.description,
+            onDismiss = { editingId = null },
+            onSave = { name, repRange, description ->
+                scope.launch { RehabRepository.updateExercise(context, group, exerciseBeingEdited.id, name, repRange, description) }
+                editingId = null
             },
         )
     }
@@ -816,6 +799,7 @@ private fun RehabExerciseCard(
     onClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(
@@ -862,61 +846,10 @@ private fun RehabExerciseCard(
                     canMoveDown = canMoveDown,
                     onMoveUp = onMoveUp,
                     onMoveDown = onMoveDown,
+                    onEdit = onEdit,
                     onDelete = onDelete,
                 )
             }
         }
     }
-}
-
-@Composable
-private fun AddRehabDialog(
-    onDismiss: () -> Unit,
-    onSave: (name: String, repRange: String, description: String) -> Unit,
-) {
-    var name by rememberSaveable { mutableStateOf("") }
-    var repRange by rememberSaveable { mutableStateOf("") }
-    var description by rememberSaveable { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Rehab Exercise") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = capitalizeWords(it) },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = repRange,
-                    onValueChange = { repRange = it },
-                    label = { Text("Rep Range") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = capitalizeFirst(it) },
-                    label = { Text("Description") },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(name.trim(), repRange.trim(), description.trim()) },
-                enabled = name.isNotBlank(),
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
 }

@@ -33,6 +33,15 @@ object StretchRepository {
         }
     }
 
+    suspend fun updateExercise(context: Context, id: String, name: String, repRange: String, description: String) {
+        context.stretchDataStore.edit { prefs ->
+            val updated = decode(prefs[exercisesKey].orEmpty()).map { exercise ->
+                if (exercise.id == id) exercise.copy(name = name, repRange = repRange, description = description) else exercise
+            }
+            prefs[exercisesKey] = encode(updated)
+        }
+    }
+
     suspend fun deleteExercise(context: Context, id: String) {
         context.stretchDataStore.edit { prefs ->
             val updated = decode(prefs[exercisesKey].orEmpty()).filterNot { it.id == id }
